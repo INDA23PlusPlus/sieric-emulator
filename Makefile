@@ -13,7 +13,7 @@ CFLAGS+=-Wall -Wextra -MD -std=c99
 LDFLAGS?=
 LDFLAGS+=$(LIBS)
 
-SRC_C=$(wildcard src/*.c)
+SRC_C=$(wildcard src/*.c src/**/*.c)
 OBJ=$(SRC_C:.c=.o)
 
 BIN=emu6502

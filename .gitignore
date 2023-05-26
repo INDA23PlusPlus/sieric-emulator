@@ -1,2 +1,6 @@
 *.o
+*.d
 emu6502
+
+.ccls-cache/
+compile_commands.json
