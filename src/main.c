@@ -11,10 +11,12 @@ struct cmd_options cmd_options = {
 };
 
 const char *help_str = ""
-"Usage: " PROGRAM_NAME " ROM\n"
+"Usage: " PROGRAM_NAME " [option]... rom\n"
 "\n"
+"Options:\n"
 "  -v, --verbose              increment the verbosity level\n"
-"  -h, --help                 print this help message\n";
+"  -h, --help                 print this help message\n"
+;
 
 int main(int argc, char *argv[]) {
     int c;
@@ -48,7 +50,12 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if(argc - optind < 1) die(help_str);
+    argv += optind;
+    if((argc -= optind) < 1) die(help_str);
+
+    printf("Verbosity: %u\n", cmd_options.verbose);
+    for(int i = 0; i < argc; ++i)
+        printf("%d: %s\n", i, argv[i]);
 
     exit(EXIT_SUCCESS);
 }

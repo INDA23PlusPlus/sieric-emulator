@@ -14,14 +14,16 @@ LDFLAGS?=
 LDFLAGS+=$(LIBS)
 
 SRC_C=$(wildcard src/*.c src/**/*.c)
-OBJ=$(SRC_C:.c=.o)
+SRC_MK=$(SRC_C:.c=_c.d)
+OBJ=$(SRC_C:.c=_c.o)
 
 BIN=emu6502
+BUILDFILES=$(OBJ) $(SRC_MK) $(SRC)
 
 all: $(BIN)
 
 clean:
-	rm -f $(OBJ) $(BIN)
+	rm -f $(BUILDFILES)
 
 %_c.o: %.c
 	@echo "CC	$(shell basename $@)"
@@ -30,5 +32,7 @@ clean:
 $(BIN): $(OBJ)
 	@echo "LD	$(shell basename $@)"
 	@$(CC) -o $@ $(CFLAGS) $^ $(LDFLAGS)
+
+-include $(SRC_MK)
 
 .PHONY: all clean
