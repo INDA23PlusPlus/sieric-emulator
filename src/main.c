@@ -1,5 +1,7 @@
 #include <emu6502/utils.h>
 #include <emu6502/args.h>
+#include <emu6502/cpu.h>
+#include <emu6502/memory.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,9 +55,14 @@ int main(int argc, char *argv[]) {
     argv += optind;
     if((argc -= optind) < 1) die(help_str);
 
-    printf("Verbosity: %u\n", cmd_options.verbose);
-    for(int i = 0; i < argc; ++i)
-        printf("%d: %s\n", i, argv[i]);
+    {
+        uint8_t test_rom[] = "\x69";
+        memory_load_rom(test_rom, sizeof test_rom - 1);
+        memory_write(0xfffc, 0x20);
+        memory_write(0xfffd, 0x40);
+    }
+    cpu_init();
+    cpu_step();
 
     exit(EXIT_SUCCESS);
 }
