@@ -50,6 +50,7 @@ inline void memory_map_page(const memory_map_entry_t *const entry, uint16_t page
 }
 
 void memory_init(void) {
+    memset(memory_map, 0, sizeof memory_map);
     uint32_t page;
     for(page = 0x0; page < 0x2000; page += 0x10)
         memory_map_page(&memory_ram_entry, page);

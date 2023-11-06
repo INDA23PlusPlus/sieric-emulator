@@ -27,15 +27,50 @@ static void cpu_mode_set_value(mem_val_t *, enum instr_address_mode, uint8_t);
 static inline void set_reg(uint8_t *, int8_t);
 static inline void compare(int8_t, int8_t);
 
+static void memory_io_read(uint8_t *, uint16_t);
+static void memory_io_write(uint8_t *, uint16_t);
+static const memory_map_entry_t memory_io_entry;
+
 static struct {
     uint8_t a, x, y;
     uint16_t pc;
     uint8_t s, p;
 } reg = {0};
 
+int cpu_halt = 0;
+
+static void memory_io_read(uint8_t *bus, uint16_t addr) {
+    switch(addr) {
+    case 0x3ff0:
+        *bus = 'A';
+        break;
+    }
+}
+
+static void memory_io_write(uint8_t *bus, uint16_t addr) {
+    switch(addr) {
+    case 0x3ff0:
+        putchar(*bus);
+        break;
+
+    case 0x3fff:
+        if(*bus == 0)
+            cpu_init();
+        else if(*bus == 1)
+            cpu_halt = 1;
+        break;
+    }
+}
+
+static const memory_map_entry_t memory_io_entry = {
+    .read = memory_io_read,
+    .write = memory_io_write,
+};
+
 void cpu_init(void) {
     memory_init();
-    reg.s = 0xfd;
+    memory_map_page(&memory_io_entry, 0x3ff0);
+    reg.s = 0xff;
     reg.pc = memory_read_w(RESET_VECTOR);
     if(cmd_options.verbose >= 1)
         printf("Reset address: $%04x\n", reg.pc);
@@ -71,11 +106,11 @@ static void cpu_mode_get_addr(mem_val_t *v, enum instr_address_mode mode) {
         break;
 
     case MODE_ABSOLUTE_X:
-        v->w = memory_read_w(reg.pc++) + reg.x;
+        v->w = memory_read_w(reg.pc) + reg.x, reg.pc += 2;
         break;
 
     case MODE_ABSOLUTE_Y:
-        v->w = memory_read_w(reg.pc++) + reg.y;
+        v->w = memory_read_w(reg.pc) + reg.y, reg.pc += 2;
         break;
 
     case MODE_ZERO_PAGE_X:
@@ -184,7 +219,7 @@ void cpu_step(void) {
     cpu_mode_get_addr(&v, instr->mode);
 
     if(cmd_options.verbose >= 2)
-        printf("running: %s %s\n",
+        printf("$%04x: %s %s\n", reg.pc,
                instr_type_str(instr->type), instr_mode_str(instr->mode));
 
 #define GETVAL()    cpu_mode_get_value(&v, instr->mode)
@@ -223,12 +258,12 @@ void cpu_step(void) {
 
     /* increment and decrement */
     case OP_INC: MODVAL(v.b+1); break;
-    case OP_INX: GETVAL(); set_reg(&reg.x, reg.x+1); break;
-    case OP_INY: GETVAL(); set_reg(&reg.y, reg.y+1); break;
+    case OP_INX: set_reg(&reg.x, reg.x+1); break;
+    case OP_INY: set_reg(&reg.y, reg.y+1); break;
 
     case OP_DEC: MODVAL(v.b-1); break;
-    case OP_DEX: GETVAL(); set_reg(&reg.x, reg.x-1); break;
-    case OP_DEY: GETVAL(); set_reg(&reg.y, reg.y-1); break;
+    case OP_DEX: set_reg(&reg.x, reg.x-1); break;
+    case OP_DEY: set_reg(&reg.y, reg.y-1); break;
 
     /* shift and rotate */
     /* TODO: I have literally no idea how the flags for these instructions
@@ -274,14 +309,14 @@ void cpu_step(void) {
         break;
 
     /* branch */
-    case OP_BCC: GETVAL(); if(!HAS_FLAG(FLAGS_CARRY))    reg.pc = v.w; break;
-    case OP_BCS: GETVAL(); if(HAS_FLAG(FLAGS_CARRY))     reg.pc = v.w; break;
-    case OP_BNE: GETVAL(); if(!HAS_FLAG(FLAGS_ZERO))     reg.pc = v.w; break;
-    case OP_BEQ: GETVAL(); if(HAS_FLAG(FLAGS_ZERO))      reg.pc = v.w; break;
-    case OP_BPL: GETVAL(); if(!HAS_FLAG(FLAGS_NEGATIVE)) reg.pc = v.w; break;
-    case OP_BMI: GETVAL(); if(HAS_FLAG(FLAGS_NEGATIVE))  reg.pc = v.w; break;
-    case OP_BVC: GETVAL(); if(!HAS_FLAG(FLAGS_OVERFLOW)) reg.pc = v.w; break;
-    case OP_BVS: GETVAL(); if(HAS_FLAG(FLAGS_OVERFLOW))  reg.pc = v.w; break;
+    case OP_BCC: if(!HAS_FLAG(FLAGS_CARRY))    reg.pc = v.w; break;
+    case OP_BCS: if(HAS_FLAG(FLAGS_CARRY))     reg.pc = v.w; break;
+    case OP_BNE: if(!HAS_FLAG(FLAGS_ZERO))     reg.pc = v.w; break;
+    case OP_BEQ: if(HAS_FLAG(FLAGS_ZERO))      reg.pc = v.w; break;
+    case OP_BPL: if(!HAS_FLAG(FLAGS_NEGATIVE)) reg.pc = v.w; break;
+    case OP_BMI: if(HAS_FLAG(FLAGS_NEGATIVE))  reg.pc = v.w; break;
+    case OP_BVC: if(!HAS_FLAG(FLAGS_OVERFLOW)) reg.pc = v.w; break;
+    case OP_BVS: if(HAS_FLAG(FLAGS_OVERFLOW))  reg.pc = v.w; break;
 
     /* transfer */
     case OP_TAX: set_reg(&reg.x, reg.a); break;

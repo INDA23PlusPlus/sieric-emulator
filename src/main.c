@@ -10,6 +10,7 @@
 
 struct cmd_options cmd_options = {
     .verbose = 0,
+    .step = 0,
 };
 
 const char *help_str = ""
@@ -18,6 +19,7 @@ const char *help_str = ""
 "Options:\n"
 "  -v, --verbose              increment the verbosity level\n"
 "  -h, --help                 print this help message\n"
+"  -d, --debug                start in debugging mode\n"
 ;
 
 int main(int argc, char *argv[]) {
@@ -29,15 +31,20 @@ int main(int argc, char *argv[]) {
         static struct option long_opts[] = {
         {"verbose", no_argument, NULL, 'v'},
         {"help", no_argument, NULL, 'h'},
+        {"debug", no_argument, NULL, 'd'},
         {0, 0, 0, 0},
         };
 
-        if((c = getopt_long(argc, argv, "vh", long_opts, &longind)) == -1)
+        if((c = getopt_long(argc, argv, "vhd", long_opts, &longind)) == -1)
            break;
 
         switch(c) {
         case 'v':
             cmd_options.verbose++;
+            break;
+
+        case 'd':
+            cmd_options.step = 1;
             break;
 
         case 'h':
@@ -80,8 +87,11 @@ int main(int argc, char *argv[]) {
     }
     cpu_init();
 
-    do cpu_step();
-    while(fgetc(stdin) != 'q');
+    if(cmd_options.step)
+        do cpu_step();
+        while(!cpu_halt && fgetc(stdin) != 'q');
+    else
+        while(!cpu_halt) cpu_step();
 
 ret:
     exit(ret);
