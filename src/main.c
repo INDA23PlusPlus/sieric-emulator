@@ -21,10 +21,10 @@ const char *help_str = ""
 ;
 
 int main(int argc, char *argv[]) {
-    int c;
+    int ret = EXIT_SUCCESS;
 
     for(;;) {
-        int longind;
+        int longind, c;
 
         static struct option long_opts[] = {
         {"verbose", no_argument, NULL, 'v'},
@@ -55,14 +55,34 @@ int main(int argc, char *argv[]) {
     argv += optind;
     if((argc -= optind) < 1) die(help_str);
 
+    FILE *f;
+    if(!(f = fopen(argv[0], "rb"))) {
+        perror("fopen");
+        ret = EXIT_FAILURE;
+        goto ret;
+    }
+
+    fseek(f, 0, SEEK_END);
+    size_t rom_sz = ftell(f);
+    rewind(f);
+
     {
-        uint8_t test_rom[] = "\x69";
-        memory_load_rom(test_rom, sizeof test_rom - 1);
-        memory_write(0xfffc, 0x20);
-        memory_write(0xfffd, 0x40);
+        uint8_t rom[rom_sz];
+        if(fread(rom, 1, rom_sz, f) != rom_sz) {
+            fclose(f);
+            perror("fread");
+            ret = EXIT_FAILURE;
+            goto ret;
+        }
+        fclose(f);
+        /* TODO: load ROM from FILE * directly */
+        memory_load_rom_addr(rom, rom_sz, 0x8000);
     }
     cpu_init();
-    cpu_step();
 
-    exit(EXIT_SUCCESS);
+    do cpu_step();
+    while(fgetc(stdin) != 'q');
+
+ret:
+    exit(ret);
 }

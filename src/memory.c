@@ -1,5 +1,6 @@
 #include <emu6502/memory.h>
 #include <string.h>
+#include <endianness.h>
 
 #define MIN(a, b) ((a)<(b)?(a):(b))
 
@@ -49,7 +50,7 @@ uint16_t memory_read_w(uint16_t addr) {
     } out;
     out.l = memory_read(addr);
     out.h = memory_read(addr+1);
-    return out.w;
+    return end_le16toh(out.w);
 }
 
 void memory_write(uint16_t addr, uint8_t val) {
@@ -60,6 +61,26 @@ void memory_write(uint16_t addr, uint8_t val) {
         memory_write_prg_rom(addr);
 }
 
+void memory_write_w(uint16_t addr, uint16_t val) {
+    union {
+        uint16_t w;
+        struct {
+            uint8_t l;
+            uint8_t h;
+        };
+    } v;
+    v.w = end_htole16(val);
+    memory_write(addr, v.l);
+    memory_write(addr, v.h);
+}
+
 void memory_load_rom(uint8_t *data, size_t sz) {
-    (void)memcpy(&emu_prg_rom, data, MIN(sz, sizeof emu_prg_rom));
+    (void)memcpy(emu_prg_rom, data, MIN(sz, sizeof emu_prg_rom));
+}
+
+void memory_load_rom_addr(uint8_t *data, size_t sz, uint16_t addr) {
+    if(addr < 0x4020) return;
+    addr -= 0x4020;
+    (void)memcpy(emu_prg_rom + addr, data,
+                 MIN(sz, sizeof emu_prg_rom - addr));
 }

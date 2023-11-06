@@ -208,3 +208,23 @@ const char *instr_type_str(enum instr_type type) {
     if((size_t)type >= sizeof instrtypeidx / sizeof *instrtypeidx) type = 0;
     return (char *)&instrtypestr + instrtypeidx[type];
 }
+
+const char *instr_mode_str(enum instr_address_mode mode) {
+    static const char *names[] = {
+    [MODE_A] = "A",
+    [MODE_i] = "i",
+    [MODE_IMM] = "#",
+    [MODE_a] = "a",
+    [MODE_zp] = "zp",
+    [MODE_r] = "r",
+    [MODE_a_IN] = "(a)",
+    [MODE_a_x] = "a,x",
+    [MODE_a_y] = "a,y",
+    [MODE_zp_x] = "zp,x",
+    [MODE_zp_y] = "zp,y",
+    [MODE_zp_x_IN] = "(zp,x)",
+    [MODE_zp_y_IN] = "(zp),y",
+    };
+    if(mode >= sizeof names / sizeof *names) return "UNKNOWN";
+    else return names[mode];
+}
