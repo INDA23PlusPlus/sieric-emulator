@@ -34,9 +34,11 @@ static struct {
 } reg = {0};
 
 void cpu_init(void) {
+    memory_init();
     reg.s = 0xfd;
     reg.pc = memory_read_w(RESET_VECTOR);
-    printf("Reset address: $%04x\n", reg.pc);
+    if(cmd_options.verbose >= 1)
+        printf("Reset address: $%04x\n", reg.pc);
     reg.p |= FLAGS_UNUSED|FLAGS_BREAK|FLAGS_INTERRUPT|FLAGS_ZERO;
 }
 
