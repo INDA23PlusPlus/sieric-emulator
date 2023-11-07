@@ -16,5 +16,6 @@ extern int cpu_halt;
 
 void cpu_init(void);
 void cpu_step(void);
+void cpu_dump(void);
 
 #endif /* EMU6502_CPU_H_ */

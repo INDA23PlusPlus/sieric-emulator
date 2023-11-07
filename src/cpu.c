@@ -42,7 +42,7 @@ int cpu_halt = 0;
 static void memory_io_read(uint8_t *bus, uint16_t addr) {
     switch(addr) {
     case 0x3ff0:
-        *bus = 'A';
+        *bus = (uint8_t)getchar();
         break;
     }
 }
@@ -211,16 +211,15 @@ static inline void compare(int8_t l, int8_t r) {
 
 /* TODO: cycles? */
 void cpu_step(void) {
-    if(cmd_options.verbose >= 2) printf("-----\n");
-
     uint8_t opcode = memory_read(reg.pc++);
     const instr_t *instr = &instruction_table[opcode];
     mem_val_t v, tmp;
-    cpu_mode_get_addr(&v, instr->mode);
 
     if(cmd_options.verbose >= 2)
-        printf("$%04x: %s %s\n", reg.pc,
+        printf("-----\n$%04x: %s %s\n", reg.pc-1,
                instr_type_str(instr->type), instr_mode_str(instr->mode));
+
+    cpu_mode_get_addr(&v, instr->mode);
 
 #define GETVAL()    cpu_mode_get_value(&v, instr->mode)
 #define GETTMPVAL() tmp.w = v.w, cpu_mode_get_value(&tmp, instr->mode)
@@ -328,20 +327,25 @@ void cpu_step(void) {
     case OP_TXS: reg.s = reg.x; break;
 
     /* stack */
-    case OP_PHA: memory_write(0x100 + reg.s--, reg.a); break;
-    case OP_PLA: set_reg(&reg.a, memory_read(0x100 + ++reg.s)); break;
-    case OP_PHP: memory_write(0x100 + reg.s--, reg.p); break;
-    case OP_PLP: reg.p = memory_read(0x100 + ++reg.s); break;
+    case OP_PHA: memory_write(0x100 + (uint8_t)(reg.s--), reg.a); break;
+    case OP_PLA: set_reg(&reg.a, memory_read(0x100 + (uint8_t)(++reg.s)));
+        break;
+    case OP_PHP: memory_write(0x100 + (uint8_t)(reg.s--), reg.p); break;
+    case OP_PLP: reg.p = memory_read(0x100 + (uint8_t)(++reg.s)); break;
 
     /* subroutines and jump */
     case OP_JMP: reg.pc = v.w; break;
     case OP_JSR:
-        memory_write_w(reg.s-1, reg.pc-1), reg.s -= 2, reg.pc = v.w;
+        memory_write_w(0x100 + (uint8_t)(reg.s-1), reg.pc-1);
+        reg.s -= 2, reg.pc = v.w;
         break;
-    case OP_RTS: reg.pc = memory_read_w(reg.s+1) + 1, reg.s += 2; break;
+    case OP_RTS:
+        reg.pc = memory_read_w(0x100 + (uint8_t)(reg.s+1)) + 1;
+        reg.s += 2;
+        break;
     case OP_RTI:
-        reg.p = memory_read(reg.s+1);
-        reg.pc = memory_read_w(reg.s+2);
+        reg.p = memory_read(0x100 + (uint8_t)(reg.s+1));
+        reg.pc = memory_read_w(0x100 + (uint8_t)(reg.s+2));
         reg.s += 3;
         break;
 
@@ -369,4 +373,18 @@ void cpu_step(void) {
 #undef GETTMPVAL
 #undef SETVAL
 #undef MODVAL
+}
+
+void cpu_dump(void) {
+    char buf[8];
+    for(uint8_t i = 0; i < 8; ++i)
+        buf[7-i] = reg.p&(1<<i) ? '1' : '0';
+    printf("-----\n"
+           "PC: $%04x\n"
+           "A: $%02x\n"
+           "X: $%02x\n"
+           "Y: $%02x\n"
+           "S: $%02x\n"
+           "    NV-BDIZC\n"
+           "P: %%%8s\n", reg.pc, reg.a, reg.x, reg.y, reg.s, buf);
 }

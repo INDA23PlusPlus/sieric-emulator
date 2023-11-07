@@ -88,8 +88,10 @@ int main(int argc, char *argv[]) {
     cpu_init();
 
     if(cmd_options.step)
-        do cpu_step();
-        while(!cpu_halt && fgetc(stdin) != 'q');
+        do {
+            cpu_step();
+            cpu_dump();
+        } while(!cpu_halt && fgetc(stdin) != 'q');
     else
         while(!cpu_halt) cpu_step();
 

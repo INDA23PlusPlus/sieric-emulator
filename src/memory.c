@@ -94,7 +94,7 @@ void memory_write_w(uint16_t addr, uint16_t val) {
     } v;
     v.w = end_htole16(val);
     memory_write(addr, v.l);
-    memory_write(addr, v.h);
+    memory_write(addr+1, v.h);
 }
 
 void memory_load_rom(uint8_t *data, size_t sz) {
